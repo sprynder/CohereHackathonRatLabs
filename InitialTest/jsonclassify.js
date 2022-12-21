@@ -1,5 +1,5 @@
 const cohere = require('cohere-ai')
-var json = require('./testjs.json')
+var json = require('./testjs2.json')
 
 cohere.init('Y9FxEPgNOaSUnIshWdfHmtVRMNaLyX5sRawtmR5o')
 
