@@ -10,7 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@slack/bolt": "^3.12.2"
+    "@slack/bolt": "^3.12.2",
+    "axios": "^1.2.1"
   },
   "devDependencies": {
     "dotenv": "^16.0.3",
