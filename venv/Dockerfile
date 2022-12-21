@@ -1,7 +1,6 @@
 FROM python:3.10.4-buster
 # copy the requirements file into the image
 COPY ./requirements.txt /app/requirements.txt
-COPY ./emotions.json /app/emotions.json
 # switch working directory
 WORKDIR /app
 

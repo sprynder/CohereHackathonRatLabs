@@ -3,22 +3,25 @@ import cohere
 from cohere.classify import Example
 import numpy as np
 import pinecone
-import json
 import jsonpickle
 app = Flask(__name__)
-emotion_file = open('emotions.json', encoding="utf8")
-emotion_data = json.load(emotion_file)
-examples = []
-for i in range(len(emotion_data)):
-    examples.append(Example(emotion_data[i]['text'], emotion_data[i]['label']))
 
-pinecone.init("909a3195-602e-46c2-b603-a0f44f1183d7", environment='us-west1-gcp')
+# emotion_file = open('emotions.json', encoding="utf8")
+# emotion_data = json.load(emotion_file)
+# examples = []
+# for i in range(len(emotion_data)):
+#     examples.append(Example(emotion_data[i]['text'], emotion_data[i]['label']))
+
 co = cohere.Client("Y9FxEPgNOaSUnIshWdfHmtVRMNaLyX5sRawtmR5o")
+pinecone.init("909a3195-602e-46c2-b603-a0f44f1183d7", environment='us-west1-gcp')
+co_sentiment = cohere.Client('3XRtN3vVilipXlDCuDS9XAnFXrS6vm3bsdg5aeUI')
 
 @app.route("/search", methods = ['POST'])
 def ss():
+    
     res = request.get_json()
     inputs = res['inputs']
+    
     embeds = co.embed(
         texts=inputs,
         model='small',
@@ -32,7 +35,7 @@ def ss():
         pinecone.create_index(
             index_name,
             dimension=shape[1],
-            metric='cosine'
+            metric='dotproduct'
         )
 
     # connect to index
@@ -62,8 +65,6 @@ def ss():
         truncate='LEFT'
     ).embeddings
 
-    print(np.array(xq).shape)
-
     # query, returning the top 5 most similar results
     res = index.query(xq, top_k=5, include_metadata=True)
     ret = []
@@ -78,9 +79,9 @@ def sentiment():
     print(type(request))
     res = request.get_json()
     inputs = res['inputs']
-    classify = co.classify(
-        inputs = inputs,
-        examples = examples
+    classify = co_sentiment.classify(
+        model='877d44cc-dbfa-4d50-9240-3cdb530e1394-ft',
+        inputs = inputs
     )
     ret = classify.classifications
     return jsonpickle.encode(ret)
