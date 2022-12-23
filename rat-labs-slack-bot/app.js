@@ -10,10 +10,15 @@ const app = new App({
 app.command("/sentiment", async ({ command, ack, say }) => {
     try {
         await ack();
-
         // if no user is specified, get sentiment distribution of the entire chat history
         if(!command.text) {
-            say("I'm on it! Scanning sentiment of all channels I'm in now...");
+            app.client.chat.postEphemeral({
+                token: process.env.SLACK_BOT_TOKEN,
+                channel: command.channel_id,
+                user: command.user_id,
+                text:"I'm on it! Scanning sentiment of all channels I'm in now..."
+              });
+            // say("I'm on it! Scanning sentiment of all channels I'm in now...");
             findConversation().then(msg_arr => {
                 const body = {
                     inputs: msg_arr
@@ -29,7 +34,36 @@ app.command("/sentiment", async ({ command, ack, say }) => {
                     for(const [key, value] of parsed_data) {
                         output += ' - ' + key + ": " + Math.round(value * 100).toString() + "%\n";
                     }
-                    say("Here's the sentiment breakdown for all channels I'm in:\n" + output);
+                    blocks=[
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "plain_text",
+                                "emoji": true,
+                                "text": "Here's the sentiment breakdown for all channels I'm in:"
+                            }
+                        },
+                        {
+                            "type": "divider"
+                        },
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "plain_text",
+                                "emoji": true,
+                                "text": output
+                            }
+                        }
+                    ]
+                    app.client.chat.postEphemeral({
+                        text: "",
+                        token: process.env.SLACK_BOT_TOKEN,
+                        channel: command.channel_id,
+                        user: command.user_id,
+                        blocks:blocks
+                      });
+
+                    //say(blocks);
                 }, error => {
                     console.log(error.code);
                 });
@@ -39,7 +73,13 @@ app.command("/sentiment", async ({ command, ack, say }) => {
         // if the user is specified
         if(command.text) {
             const user_id = getUser(command.text);
-            say(`I'm on it! Scanning sentiment of <@${user_id}> now...`);
+            app.client.chat.postEphemeral({
+                token: process.env.SLACK_BOT_TOKEN,
+                channel: command.channel_id,
+                user: command.user_id,
+                text:`I'm on it! Scanning sentiment of <@${user_id}> now...`
+              });
+            // say(`I'm on it! Scanning sentiment of <@${user_id}> now...`);
             findConversation(user_id).then(user_msg_arr => {
                 const body = {
                     inputs: user_msg_arr
@@ -50,14 +90,42 @@ app.command("/sentiment", async ({ command, ack, say }) => {
                     const parsed_data = parseDataBySentiment(response.data);
                     console.log(response.data.length);
                     for(let [key, value] of parsed_data) {
-                        console.log(value)
+                        //console.log(value)
                         parsed_data.set(key, value / response.data.length);
                     }
                     let output = "";
                     for(const [key, value] of parsed_data) {
                         output += ' - ' + key + ": " + Math.round(value * 100).toString() + "%\n";
                     }
-                    say(`Here's the sentiment breakdown for <@${user_id}>:\n` + output);
+                    // say(`Here's the sentiment breakdown for <@${user_id}>:\n` + output);
+                    blocks=[
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "plain_text",
+                                "emoji": true,
+                                "text": "Here's the sentiment breakdown for all channels I'm in:"
+                            }
+                        },
+                        {
+                            "type": "divider"
+                        },
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "plain_text",
+                                "emoji": true,
+                                "text": output
+                            }
+                        }
+                    ]
+                    app.client.chat.postEphemeral({
+                        text: `Here's the sentiment breakdown for <@${user_id}>:\n`,
+                        token: process.env.SLACK_BOT_TOKEN,
+                        channel: command.channel_id,
+                        user: command.user_id,
+                        blocks:blocks
+                      });
                 }, error => {
                     console.log(error.code);
                 });
@@ -74,7 +142,13 @@ app.command("/smart-search", async ({ command, ack, say }) => {
         await ack();
 
         // detect if a user is mentioned
-        say(`I'm on it! Finding similar messages to '${command.text}'...`);
+        app.client.chat.postEphemeral({
+            token: process.env.SLACK_BOT_TOKEN,
+            channel: command.channel_id,
+            user: command.user_id,
+            text:`I'm on it! Finding similar messages to '${command.text}'...`
+          });
+        // say(`I'm on it! Finding similar messages to '${command.text}'...`);
         findConversation().then(msg_arr => {
             const search_body = {
                 inputs: msg_arr,
@@ -90,7 +164,35 @@ app.command("/smart-search", async ({ command, ack, say }) => {
                     output += index.toString() + ": " + msg.substring(msg.indexOf(':') + 2) + '\n'; 
                     index += 1;
                 }
-                say("Here's the most similar messages I've found in order: \n" + output);
+                blocks=[
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "plain_text",
+                            "emoji": true,
+                            "text": "Here's the sentiment breakdown for all channels I'm in:"
+                        }
+                    },
+                    {
+                        "type": "divider"
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "plain_text",
+                            "emoji": true,
+                            "text": output
+                        }
+                    }
+                ]
+                app.client.chat.postEphemeral({
+                    text: "Here's the most similar messages I've found in order: \n",
+                    token: process.env.SLACK_BOT_TOKEN,
+                    channel: command.channel_id,
+                    user: command.user_id,
+                    blocks:blocks
+                  });
+                // say("Here's the most similar messages I've found in order: \n" + output);
             }, error => {
                 console.log(error.code);
             });
@@ -160,7 +262,7 @@ async function findConversation(user_id = "") {
 }
 
 (async() => {
-    const port = 3000
+    const port = 80
 
     await app.start(process.env.PORT || port);
     console.log(`Slack Bolt up and running on port ${port}`);
