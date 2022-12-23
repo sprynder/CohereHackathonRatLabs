@@ -10,13 +10,12 @@ const app = new App({
 app.command("/sentiment", async ({ command, ack, say }) => {
   try {
     await ack();
-    // if no user is specified, get sentiment distribution of the entire chat history
     if (!command.text) {
       app.client.chat.postEphemeral({
+        text: "I'm on it! Scanning sentiment of all channels I'm in now...",
         token: process.env.SLACK_BOT_TOKEN,
         channel: command.channel_id,
-        user: command.user_id,
-        text: "I'm on it! Scanning sentiment of all channels I'm in now...",
+        user: command.user_id
       });
 
       findConversation().then((msg_arr) => {
@@ -80,14 +79,13 @@ app.command("/sentiment", async ({ command, ack, say }) => {
       });
     }
 
-    // if the user is specified
-    if (command.text) {
+    if (isTaggedUser(command.text)) {
       const user_id = getUser(command.text);
       app.client.chat.postEphemeral({
+        text: `I'm on it! Scanning sentiment of <@${user_id}> now...`,
         token: process.env.SLACK_BOT_TOKEN,
         channel: command.channel_id,
-        user: command.user_id,
-        text: `I'm on it! Scanning sentiment of <@${user_id}> now...`,
+        user: command.user_id
       });
       findConversation(user_id).then((user_msg_arr) => {
         const body = {
@@ -102,7 +100,6 @@ app.command("/sentiment", async ({ command, ack, say }) => {
           .then(
             (response) => {
               const parsed_data = parseDataBySentiment(response.data);
-              console.log(response.data.length);
               for (let [key, value] of parsed_data) {
                 parsed_data.set(key, value / response.data.length);
               }
@@ -150,6 +147,13 @@ app.command("/sentiment", async ({ command, ack, say }) => {
             }
           );
       });
+    } else {
+        app.client.chat.postEphemeral({
+            text: `Hmm that didn't seem to work, try to @someone`,
+            token: process.env.SLACK_BOT_TOKEN,
+            channel: command.channel_id,
+            user: command.user_id
+        });
     }
   } catch (error) {
     console.log("error while trying to carry out command");
@@ -161,14 +165,12 @@ app.command("/smart-search", async ({ command, ack, say }) => {
   try {
     await ack();
 
-    // detect if a user is mentioned
     app.client.chat.postEphemeral({
+      text: `I'm on it! Finding similar messages to '${command.text}'...`,
       token: process.env.SLACK_BOT_TOKEN,
       channel: command.channel_id,
-      user: command.user_id,
-      text: `I'm on it! Finding similar messages to '${command.text}'...`,
+      user: command.user_id
     });
-    // say(`I'm on it! Finding similar messages to '${command.text}'...`);
     findConversation().then((msg_arr) => {
       const search_body = {
         inputs: msg_arr,
@@ -239,15 +241,30 @@ function isTaggedUser(command_text) {
 }
 
 function parseDataBySentiment(sentiment_api_resp) {
-  // given as array of objects
   const data_dict = new Map();
-  for (const resp of sentiment_api_resp) {
-    if (data_dict.has(resp.prediction)) {
-      data_dict.set(resp.prediction, data_dict.get(resp.prediction) + 1);
-    } else {
-      data_dict.set(resp.prediction, 1);
+  const imposed_map = new Map([
+    ['anger', ['anger', 'annoyance', 'disapproval']],
+    ['disgust', ['disgust']],
+    ['fear', ['fear', 'nervousness']],
+    ['joy', ['joy', 'amusement', 'approval', 'excitement', 'gratitude', 'love', 'optimism', 'relief', 'pride', 'admiration', 'desire', 'caring']],
+    ['sadness', ['sadness', 'disappointment', 'embarrassment', 'grief', 'remorse']],
+    ['suprise', ['suprise', 'realization', 'confusion', 'curiosity']]
+  ]);
+
+  for(const [key, value] of imposed_map) {
+    data_dict.set(key, 1);
+  }
+
+  for(const resp of sentiment_api_resp) {
+    for(const [key, value] of imposed_map) {
+        if(value.find(val => val === resp.prediction)) {
+            data_dict.set(key, data_dict.get(key) + 1);
+        }
     }
   }
+
+  console.log(data_dict);
+
   const sorted_data_dict = new Map(
     [...data_dict.entries()].sort((a, b) => b[1] - a[1])
   );
@@ -280,6 +297,7 @@ async function findConversation(user_id = "") {
             msg_obj.subtype != "channel_purpose" &&
             msg_obj.subtype != "channel_join"
           ) {
+            // console.log(msg_obj);
             user_messages.push(msg_obj.text);
           }
         }
