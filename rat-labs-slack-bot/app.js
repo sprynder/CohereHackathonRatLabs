@@ -171,69 +171,94 @@ app.command("/smart-search", async ({ command, ack, say }) => {
       channel: command.channel_id,
       user: command.user_id,
     });
-    findConversation().then((msg_arr) => {
-      const search_body = {
-        inputs: msg_arr,
-        query: command.text,
-      };
-
-      axios
-        .post(
-          process.env.DEFAULT_ENDPOINT + process.env.SEARCH_ENDPOINT,
-          search_body
-        )
-        .then(
-          (response) => {
-            const top_five_messages = response.data.slice(0, 5);
-            let output = "";
-            let index = 0;
-            for (const msg of top_five_messages) {
-              output +=
-                index.toString() +
-                ": " +
-                msg.substring(msg.indexOf(":") + 2) +
-                "\n";
-              index += 1;
-            }
-            blocks = [
-              {
-                type: "section",
-                text: {
-                  type: "plain_text",
-                  emoji: true,
-                  text: "Here's the sentiment breakdown for all channels I'm in:",
-                },
-              },
-              {
-                type: "divider",
-              },
-              {
-                type: "section",
-                text: {
-                  type: "plain_text",
-                  emoji: true,
-                  text: output,
-                },
-              },
-            ];
-            app.client.chat.postEphemeral({
-              text: "Here's the most similar messages I've found in order: \n",
-              token: process.env.SLACK_BOT_TOKEN,
-              channel: command.channel_id,
-              user: command.user_id,
-              blocks: blocks,
-            });
+    const conv_meta = await findConversationMeta(command.text);
+    let five_msg_arr = conv_meta[0];
+    let five_msg_arr_all = conv_meta[1];
+    let permalinks = [];
+    for (let i = 0; i < five_msg_arr_all.length; i += 1) {
+      let temp_msg = five_msg_arr_all[i];
+    const perma_response =  await app.client.chat.getPermalink({
+          token: process.env.SLACK_BOT_TOKEN,
+          channel: temp_msg.channelID,
+          message_ts: temp_msg.ts,
+    })
+    permalinks.push(perma_response.permalink);
+    }
+    blocks = [
+        {
+          type: "section",
+          text: {
+            type: "plain_text",
+            emoji: true,
+            text: "Here are the top 5 closes messages from the channels I'm in:",
           },
-          (error) => {
-            console.log(error.code);
-          }
-        );
-    });
+        },
+        {
+          type: "divider",
+        }]
+    let output = [];
+    let index = 0;
+    for (let i =0; i < 5;i++)
+    {
+        output.push("");
+        output[i] += five_msg_arr[i]
+        let link = "<"+permalinks[i]+"|Result "+ i.toString() + ": "+">"
+        console.log(link);
+        blocks.push({ type: "section",
+        text: {
+          type: "mrkdwn",
+          text:  link+" "+output[i],
+        }
+    })
+    }
+
+    
+      app.client.chat.postEphemeral({
+        text: "Here's the most similar messages I've found in order: \n",
+        token: process.env.SLACK_BOT_TOKEN,
+        channel: command.channel_id,
+        user: command.user_id,
+        blocks: blocks,
+      });
   } catch (error) {
     console.log("error while trying to carry out command");
     console.log(error);
   }
 });
+
+async function findPermalinks() {}
+
+async function findConversationMeta(command_text) {
+  let five_msg_arr = [];
+  let five_msg_arr_all = [];
+  const msg_arr_all = await findConversationTS();
+  let msg_arr = [];
+  for (const msg of msg_arr_all) {
+    msg_arr.push(msg.text);
+  }
+  const search_body = {
+    inputs: msg_arr,
+    query: command_text,
+  };
+  const response = await axios.post(
+    process.env.DEFAULT_ENDPOINT + process.env.SEARCH_ENDPOINT,
+    search_body
+  );
+  const top_five_messages = response.data.slice(0, 5);
+  for (const msg of top_five_messages) {
+    let msg_content = msg.substring(msg.indexOf(":") + 2);
+    five_msg_arr.push(msg_content);
+    for (const msg_cur of msg_arr_all) {
+      if (msg_cur.text === msg_content) {
+        five_msg_arr_all.push(msg_cur);
+        break;
+      }
+    }
+
+  }
+  const ret_arr = [five_msg_arr, five_msg_arr_all];
+  return ret_arr;
+}
 
 function isTaggedUser(command_text) {
   const reg = /(<@)(.*)(\|.*>)/;
@@ -329,6 +354,41 @@ async function findConversation(user_id = "") {
   }
 
   return user_messages;
+}
+
+async function findConversationTS(user_id = "") {
+  const user_messages_ts = [];
+  try {
+    const result = await app.client.conversations.list({
+      token: process.env.SLACK_BOT_TOKEN,
+    });
+
+    for (const channel_obj of result.channels) {
+      try {
+        const message_result_obj = await app.client.conversations.history({
+          channel: channel_obj.id,
+        });
+
+        for (const msg_obj of message_result_obj.messages) {
+          if (
+            (msg_obj.user === user_id || !user_id) &&
+            !msg_obj.bot_id &&
+            msg_obj.subtype != "channel_purpose" &&
+            msg_obj.subtype != "channel_join"
+          ) {
+            // console.log(msg_obj);
+            user_messages_ts.push({...msg_obj, channelID:channel_obj.id});
+          }
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  } catch (error) {
+    console.log(error);
+  }
+
+  return user_messages_ts;
 }
 
 (async () => {
