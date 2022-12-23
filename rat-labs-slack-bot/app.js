@@ -15,7 +15,7 @@ app.command("/sentiment", async ({ command, ack, say }) => {
         text: "I'm on it! Scanning sentiment of all channels I'm in now...",
         token: process.env.SLACK_BOT_TOKEN,
         channel: command.channel_id,
-        user: command.user_id
+        user: command.user_id,
       });
 
       findConversation().then((msg_arr) => {
@@ -85,7 +85,7 @@ app.command("/sentiment", async ({ command, ack, say }) => {
         text: `I'm on it! Scanning sentiment of <@${user_id}> now...`,
         token: process.env.SLACK_BOT_TOKEN,
         channel: command.channel_id,
-        user: command.user_id
+        user: command.user_id,
       });
       findConversation(user_id).then((user_msg_arr) => {
         const body = {
@@ -148,12 +148,12 @@ app.command("/sentiment", async ({ command, ack, say }) => {
           );
       });
     } else {
-        app.client.chat.postEphemeral({
-            text: `Hmm that didn't seem to work, try to @someone`,
-            token: process.env.SLACK_BOT_TOKEN,
-            channel: command.channel_id,
-            user: command.user_id
-        });
+      app.client.chat.postEphemeral({
+        text: `Hmm that didn't seem to work, try to @someone`,
+        token: process.env.SLACK_BOT_TOKEN,
+        channel: command.channel_id,
+        user: command.user_id,
+      });
     }
   } catch (error) {
     console.log("error while trying to carry out command");
@@ -169,7 +169,7 @@ app.command("/smart-search", async ({ command, ack, say }) => {
       text: `I'm on it! Finding similar messages to '${command.text}'...`,
       token: process.env.SLACK_BOT_TOKEN,
       channel: command.channel_id,
-      user: command.user_id
+      user: command.user_id,
     });
     findConversation().then((msg_arr) => {
       const search_body = {
@@ -243,23 +243,42 @@ function isTaggedUser(command_text) {
 function parseDataBySentiment(sentiment_api_resp) {
   const data_dict = new Map();
   const imposed_map = new Map([
-    ['anger', ['anger', 'annoyance', 'disapproval']],
-    ['disgust', ['disgust']],
-    ['fear', ['fear', 'nervousness']],
-    ['joy', ['joy', 'amusement', 'approval', 'excitement', 'gratitude', 'love', 'optimism', 'relief', 'pride', 'admiration', 'desire', 'caring']],
-    ['sadness', ['sadness', 'disappointment', 'embarrassment', 'grief', 'remorse']],
-    ['suprise', ['suprise', 'realization', 'confusion', 'curiosity']]
+    ["anger", ["anger", "annoyance", "disapproval"]],
+    ["disgust", ["disgust"]],
+    ["fear", ["fear", "nervousness"]],
+    [
+      "joy",
+      [
+        "joy",
+        "amusement",
+        "approval",
+        "excitement",
+        "gratitude",
+        "love",
+        "optimism",
+        "relief",
+        "pride",
+        "admiration",
+        "desire",
+        "caring",
+      ],
+    ],
+    [
+      "sadness",
+      ["sadness", "disappointment", "embarrassment", "grief", "remorse"],
+    ],
+    ["suprise", ["suprise", "realization", "confusion", "curiosity"]],
   ]);
 
-  for(const [key, value] of imposed_map) {
+  for (const [key, value] of imposed_map) {
     data_dict.set(key, 1);
   }
 
-  for(const resp of sentiment_api_resp) {
-    for(const [key, value] of imposed_map) {
-        if(value.find(val => val === resp.prediction)) {
-            data_dict.set(key, data_dict.get(key) + 1);
-        }
+  for (const resp of sentiment_api_resp) {
+    for (const [key, value] of imposed_map) {
+      if (value.find((val) => val === resp.prediction)) {
+        data_dict.set(key, data_dict.get(key) + 1);
+      }
     }
   }
 
