@@ -7,41 +7,92 @@ const app = new App({
     signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 
-app.command("/query", async ({ command, ack, say }) => {
+app.command("/sentiment", async ({ command, ack, say }) => {
     try {
         await ack();
 
-        getUser(command.text).then(user_id => {
+        // if no user is specified, get sentiment distribution of the entire chat history
+        if(!command.text) {
+            say("I'm on it! Scanning sentiment of all channels I'm in now...");
+            findConversation().then(msg_arr => {
+                const body = {
+                    inputs: msg_arr
+                }
+
+                axios.post(process.env.DEFAULT_ENDPOINT + process.env.SENTIMENT_ENDPOINT, body)
+                .then(response => {
+                    const parsed_data = parseDataBySentiment(response.data);
+                    for(let [key, value] of parsed_data) {
+                        parsed_data.set(key, value / response.data.length);
+                    }
+                    let output = "";
+                    for(const [key, value] of parsed_data) {
+                        output += ' - ' + key + ": " + Math.round(value * 100).toString() + "%\n";
+                    }
+                    say("Here's the sentiment breakdown for all channels I'm in:\n" + output);
+                }, error => {
+                    console.log(error.code);
+                });
+            });
+        }
+
+        // if the user is specified
+        if(command.text) {
+            const user_id = getUser(command.text);
+            say(`I'm on it! Scanning sentiment of <@${user_id}> now...`);
             findConversation(user_id).then(user_msg_arr => {
-                const sentiment_body = {
+                const body = {
                     inputs: user_msg_arr
                 }
 
-                axios.post('https://961d-2600-1700-31b1-4c00-18d3-35f9-696f-b015.ngrok.io/sentiment', 
-                    sentiment_body
-                )
+                axios.post(process.env.DEFAULT_ENDPOINT + process.env.SENTIMENT_ENDPOINT, body)
                 .then(response => {
-                    console.log("FOR SENTIMENT:\n", response.data);
+                    const parsed_data = parseDataBySentiment(response.data);
+                    console.log(response.data.length);
+                    for(let [key, value] of parsed_data) {
+                        console.log(value)
+                        parsed_data.set(key, value / response.data.length);
+                    }
+                    let output = "";
+                    for(const [key, value] of parsed_data) {
+                        output += ' - ' + key + ": " + Math.round(value * 100).toString() + "%\n";
+                    }
+                    say(`Here's the sentiment breakdown for <@${user_id}>:\n` + output);
                 }, error => {
-                    console.log(error);
+                    console.log(error.code);
                 });
-                console.log(user_msg_arr);
-                
-                // search
-                const search_body = {
-                    inputs: user_msg_arr,
-                    query: "joy"
-                }
+            });
+        }
+    } catch (error) {
+        console.log("error while trying to carry out command");
+        console.log(error)
+    }
+});
 
-                axios.post('https://961d-2600-1700-31b1-4c00-18d3-35f9-696f-b015.ngrok.io/search', 
-                    search_body
-                )
-                .then(response => {
-                    console.log("FOR SEARCHING:\n", response.data);
-                }, error => {
-                    console.log(error);
-                });
-                console.log(user_msg_arr);
+app.command("/smart-search", async ({ command, ack, say }) => {
+    try {
+        await ack();
+
+        // detect if a user is mentioned
+        say(`I'm on it! Finding similar messages to '${command.text}'...`);
+        findConversation().then(msg_arr => {
+            const search_body = {
+                inputs: msg_arr,
+                query: command.text
+            }
+
+            axios.post(process.env.DEFAULT_ENDPOINT + process.env.SEARCH_ENDPOINT, search_body)
+            .then(response => {
+                const top_five_messages = response.data.slice(0, 5);
+                let output = "";
+                let index = 0;
+                for(const msg of top_five_messages) { 
+                    output += index.toString() + ": " + msg.substring(msg.indexOf(':') + 2) + '\n'; 
+                    index += 1;
+                }
+                say("Here's the most similar messages I've found in order: \n" + output);
+            }, error => {
+                console.log(error.code);
             });
         });
     } catch (error) {
@@ -50,13 +101,32 @@ app.command("/query", async ({ command, ack, say }) => {
     }
 });
 
-async function getUser(cmd_text) {
+function isTaggedUser(command_text) {
+    const reg = /(<@)(.*)(\|.*>)/;
+    return reg.test(command_text);
+}
+
+function parseDataBySentiment(sentiment_api_resp) {
+    // given as array of objects
+    const data_dict = new Map();
+    for(const resp of sentiment_api_resp) {
+        if(data_dict.has(resp.prediction)) {
+            data_dict.set(resp.prediction, data_dict.get(resp.prediction) + 1);
+        } else {
+            data_dict.set(resp.prediction, 1);
+        }
+    }
+    const sorted_data_dict = new Map([...data_dict.entries()].sort((a, b) => b[1] - a[1]));
+    return sorted_data_dict;
+}
+
+function getUser(cmd_text) {
     const reg= /(<@)(.*)(\|.*>)/;
     const match = cmd_text.match(reg);
     return `${match[2]}`;
 }
 
-async function findConversation(user_id) {
+async function findConversation(user_id = "") {
     const user_messages = [];
     try {
         const result = await app.client.conversations.list({
@@ -70,7 +140,11 @@ async function findConversation(user_id) {
                 });
 
                 for(const msg_obj of message_result_obj.messages) {
-                    if(msg_obj.user === user_id) {
+                    // console.log(msg_obj);
+                    if((msg_obj.user === user_id || !user_id) 
+                        && !msg_obj.bot_id 
+                        && msg_obj.subtype != 'channel_purpose' 
+                        && msg_obj.subtype != 'channel_join') {
                         user_messages.push(msg_obj.text);
                     }
                 }
