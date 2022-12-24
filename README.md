@@ -9,7 +9,7 @@ In the world of information, it can be difficult to moderate and keep up with co
 To solve this, we've come up with our product: **Found in Translation** (FiT).
 
 
-##Flask API (venv)
+## Flask API (venv)
 Venv contains the code for the Flask API.
 
 The actual code for the API is in the app.py file. We used Flask to develop an API that interfaces with our two cohere models. The first one is a embedding model (using the multilingual model) where we send in a list of chat messages as the embeddings. We then use Pinecone to store the vectors and use dotproduct similarity to find the most relevant messages to the user query.
