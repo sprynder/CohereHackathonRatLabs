@@ -171,15 +171,18 @@ app.command("/sentiment", async ({ command, ack, say }) => {
 app.command("/smart-search", async ({ command, ack, say }) => {
   try {
     await ack();
-
+    let num = command.text.substring(0,command.text.indexOf(" "));
+    let message = command.text.substring(command.text.indexOf(" ")+1)
+    let parsed_int = parseInt(num, 10);
+    if(!isNaN(parsed_int)){
     app.client.chat.postEphemeral({
-      text: `I'm on it! Finding similar messages to '${command.text}'...`,
+      text: `I'm on it! Finding similar messages to '${message}'...`,
       token: process.env.SLACK_BOT_TOKEN,
       channel: command.channel_id,
       user: command.user_id,
     });
     let permalinks = [];
-    const five_msg_obj_arr = await findConversationMeta(command.text);
+    const five_msg_obj_arr = await findConversationMeta(message, num);
     for (let i = 0; i < five_msg_obj_arr.length; i += 1) {
       const permalink_response = await app.client.chat.getPermalink({
         token: process.env.SLACK_BOT_TOKEN,
@@ -194,7 +197,7 @@ app.command("/smart-search", async ({ command, ack, say }) => {
         text: {
           type: "plain_text",
           emoji: true,
-          text: "Here are the top 5 closest messages from the channels I'm in:",
+          text: "Here are the top "+num+" closest messages from the channels I'm in:",
         },
       },
       {
@@ -202,7 +205,7 @@ app.command("/smart-search", async ({ command, ack, say }) => {
       },
     ];
     for (let i = 0; i < five_msg_obj_arr.length; i++) {
-      let link = "<" + permalinks[i] + "|Go to message: >";
+      let link = "<" + permalinks[i] + "|Go to message "+(i+1).toString()+": >";
       blocks.push({
         type: "section",
         text: {
@@ -219,6 +222,15 @@ app.command("/smart-search", async ({ command, ack, say }) => {
       user: command.user_id,
       blocks: blocks,
     });
+}
+else{
+    app.client.chat.postEphemeral({
+        text: "Please enter a valid number of search results!\n",
+        token: process.env.SLACK_BOT_TOKEN,
+        channel: command.channel_id,
+        user: command.user_id,
+      });
+}
   } catch (error) {
     sendGenericErrorMessage(command);
     console.log(error);
@@ -234,13 +246,14 @@ async function sendGenericErrorMessage(command) {
   });
 }
 
-async function findConversationMeta(command_text) {
+async function findConversationMeta(command_text, num) {
   let five_msg_obj_arr = [];
   const msg_obj_arr = await findConversation();
 
   const search_body = {
     inputs: msg_obj_arr.map((msg_obj) => msg_obj.text),
     query: command_text,
+    number: num
   };
 
   const response = await axios.post(
@@ -248,7 +261,7 @@ async function findConversationMeta(command_text) {
     search_body
   );
 
-  for (const msg of response.data.slice(0, CONSTANTS.NUM_MSG_PER_SEARCH)) {
+  for (const msg of response.data.slice(0, num)) {
     let msg_content = msg.substring(msg.indexOf(":") + 2);
     for (const msg_cur of msg_obj_arr) {
       if (msg_cur.text === msg_content) {
@@ -300,11 +313,11 @@ function parseDataBySentiment(sentiment_api_resp) {
     data_dict.set(key, 0);
   }
 
-  console.log(sentiment_api_resp.length);
+  //console.log(sentiment_api_resp.length);
   for (const resp of sentiment_api_resp) {
     for (const [key, value] of imposed_map) {
       if (value.find((val) => val === resp.prediction)) {
-        console.log(resp.prediction, key);
+        //console.log(resp.prediction, key);
         data_dict.set(key, data_dict.get(key) + 1);
         break;
       }
