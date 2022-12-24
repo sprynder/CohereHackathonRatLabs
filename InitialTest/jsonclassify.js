@@ -1,7 +1,7 @@
 const cohere = require('cohere-ai')
 var json = require('./testjs2.json')
 
-cohere.init('Y9FxEPgNOaSUnIshWdfHmtVRMNaLyX5sRawtmR5o')
+cohere.init('')
 
 async function model(){
     const response = await cohere.classify(json);

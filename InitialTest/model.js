@@ -1,5 +1,5 @@
 const cohere = require('cohere-ai');
-cohere.init('Y9FxEPgNOaSUnIshWdfHmtVRMNaLyX5sRawtmR5o')
+cohere.init('')
 
 
 let inputs = ["mad cuz bad", "i hate sid","saydie sc=ucks"];

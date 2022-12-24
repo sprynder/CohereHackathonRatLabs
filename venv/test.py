@@ -22,7 +22,7 @@ inputs = {"inputs":[
 
 jsonData = json.dumps(inputs)
 
-response = requests.post('http://ratlabsapi.h8gcaad5bvcvfnfv.eastus.azurecontainer.io/search', json=inputs)
+response = requests.post('', json=inputs)
 
 print("Status code: ", response.status_code)
 print("Printing Entire Post Request")

@@ -12,9 +12,9 @@ app = Flask(__name__)
 # for i in range(len(emotion_data)):
 #     examples.append(Example(emotion_data[i]['text'], emotion_data[i]['label']))
 
-co = cohere.Client("Y9FxEPgNOaSUnIshWdfHmtVRMNaLyX5sRawtmR5o")
-pinecone.init("909a3195-602e-46c2-b603-a0f44f1183d7", environment='us-west1-gcp')
-co_sentiment = cohere.Client('3XRtN3vVilipXlDCuDS9XAnFXrS6vm3bsdg5aeUI')
+co = cohere.Client("")
+pinecone.init("", environment='us-west1-gcp')
+co_sentiment = cohere.Client('')
 
 @app.route("/search", methods = ['POST'])
 def ss():
@@ -80,7 +80,7 @@ def sentiment():
     res = request.get_json()
     inputs = res['inputs']
     classify = co_sentiment.classify(
-        model='877d44cc-dbfa-4d50-9240-3cdb530e1394-ft',
+        model='',
         inputs = inputs
     )
     ret = classify.classifications

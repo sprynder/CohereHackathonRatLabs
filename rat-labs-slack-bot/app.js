@@ -23,7 +23,7 @@ app.command("/sentiment", async ({ command, ack, say }) => {
         user: command.user_id,
       });
 
-      findConversation().then((msg_obj_arr) => {
+      findConversation(command).then((msg_obj_arr) => {
         const body = {
           inputs: msg_obj_arr.map((val) => val.text),
         };
@@ -93,7 +93,7 @@ app.command("/sentiment", async ({ command, ack, say }) => {
         channel: command.channel_id,
         user: command.user_id,
       });
-      findConversation(user_id).then((user_msg_arr) => {
+      findConversation(command, user_id).then((user_msg_arr) => {
         const body = {
           inputs: user_msg_arr.map((msg_obj) => msg_obj.text),
         };
@@ -182,7 +182,7 @@ app.command("/smart-search", async ({ command, ack, say }) => {
       user: command.user_id,
     });
     let permalinks = [];
-    const five_msg_obj_arr = await findConversationMeta(message, num);
+    const five_msg_obj_arr = await findConversationMeta(message, num, command);
     for (let i = 0; i < five_msg_obj_arr.length; i += 1) {
       const permalink_response = await app.client.chat.getPermalink({
         token: process.env.SLACK_BOT_TOKEN,
@@ -246,9 +246,9 @@ async function sendGenericErrorMessage(command) {
   });
 }
 
-async function findConversationMeta(command_text, num) {
+async function findConversationMeta(command_text, num, command) {
   let five_msg_obj_arr = [];
-  const msg_obj_arr = await findConversation();
+  const msg_obj_arr = await findConversation(command);
 
   const search_body = {
     inputs: msg_obj_arr.map((msg_obj) => msg_obj.text),
@@ -335,7 +335,7 @@ function getUser(cmd_text) {
   return `${match[2]}`;
 }
 
-async function findConversation(user_id = "") {
+async function findConversation(command, user_id = "") {
   const user_messages_ts = [];
   try {
     const result = await app.client.conversations.list({
