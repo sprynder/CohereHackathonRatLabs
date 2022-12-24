@@ -20,7 +20,7 @@ print('Field names are:' + ', '.join(field for field in fields))
 # printing first 5 rows
 print('\nFirst 1 rows are:\n')
 
-f = open("testjs.json", "a", encoding="utf8")
+f = open("smalltestjs2.json", "a", encoding="utf8")
 f.write("{\n\t\"examples\": [")
 
 p = re.compile('([\"\\\b\f\n\r\t])')
@@ -35,5 +35,7 @@ for row in rows:
             f.write("\t\t{\"text\": \""+ re.sub(r"\\x", r"\\u00", s) + "\", \"label\": \"")
             f.write(field+"\"")
             f.write("},\n")
+
+f.write("},\n")
 
 f.close()
