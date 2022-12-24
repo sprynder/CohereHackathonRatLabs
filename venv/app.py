@@ -21,10 +21,10 @@ def ss():
     
     res = request.get_json()
     inputs = res['inputs']
-    
+    search_num = int(res['number'])
     embeds = co.embed(
         texts=inputs,
-        model='small',
+        model='multilingual-22-12',
         truncate='LEFT'
     ).embeddings
 
@@ -61,12 +61,12 @@ def ss():
     # create the query embedding
     xq = co.embed(
         texts=[query],
-        model='small',
+        model='multilingual-22-12',
         truncate='LEFT'
     ).embeddings
 
     # query, returning the top 5 most similar results
-    res = index.query(xq, top_k=5, include_metadata=True)
+    res = index.query(xq, top_k=search_num, include_metadata=True)
     ret = []
 
     for match in res['matches']:
@@ -80,7 +80,7 @@ def sentiment():
     res = request.get_json()
     inputs = res['inputs']
     classify = co_sentiment.classify(
-        model='',
+        model='877d44cc-dbfa-4d50-9240-3cdb530e1394-ft',
         inputs = inputs
     )
     ret = classify.classifications
