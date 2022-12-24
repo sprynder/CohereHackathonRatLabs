@@ -24,7 +24,7 @@ For this project, we used the Slack Bolt API, a wrapper on Node, to host the bot
 
 ## Sentiment Classification Models:
 
-| Training Dataset | Co:Here Model API ID |
+| Training Dataset | Co:Here Model ID |
 | ------------- | ------------- |
 | Goemotions1 | 0cb7d924-400e-4be8-9403-0a90fa25af42 |
 | Goemotions2 | 877d44cc-dbfa-4d50-9240-3cdb530e1394 |
