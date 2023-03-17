@@ -8,6 +8,8 @@ In the world of information, it can be difficult to moderate and keep up with co
 ## Solution
 To solve this, we've come up with our product: **Found in Translation** (FiT). FiT is an intelligent bot that not only provides semantic searching, but also sentiment analysis for users or servers. Semantic searching is essentially searching by meaning versus searching by strictly the words given. For example, searching for "food" with semantic search might give "here are some resturaunts near you", but with regular search, will yield something like "2005 food poisoning", quite different results.
 
+## Tech Stack
+Our tech stack consists of a Slack Bolt / JS Front End, connected to a Python / Flask backend, which would point to an Azure container as well as a Pinecone database. The backend also queried Cohere, specifically the Classify and Embed analysis endpoints.
 
 ## Flask API (venv)
 Venv contains the code for the Flask API.
@@ -19,8 +21,8 @@ The other model is a custom classification model trained using the Google GoEmot
 The clear.py file is used to manually clear the Pinecone Vector Database in case of needing a restart.
 This API is dockerized and hosted on an Azure Container Instance.
 
-## Slack Bolt API
-For this project, we used the Slack Bolt API, a wrapper on Node, to host the bot. We take in data retrieved by Slack API and form POST requests to pass into the RatLabs API - or backend. 
+## Cohere endpoints
+We query for specifically 2 endpoints: Embed and Classify. To solve our issue of multi-lingual search, we used Cohere's Embed endpoint to associate similar words in vector space, regardless of language. We also wanted to classify employee sentiment as well, and we used Classify to fit words and phrases to specific emotions.
 
 ## Sentiment Classification Models:
 
